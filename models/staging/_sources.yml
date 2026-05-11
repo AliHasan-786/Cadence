@@ -1,0 +1,103 @@
+version: 2
+
+sources:
+  - name: cadence_raw
+    description: |
+      Bronze layer — direct loads from the ingest pipeline.
+
+      For BigQuery targets (`prod`, `prod_ci`), tables live at
+      `spry-smithy-489221-p4.cadence_raw.raw_*`. For the DuckDB `dev` target,
+      the same data is read directly from local Parquet files via
+      `external_location` — same dbt project, two warehouse backends.
+    database: spry-smithy-489221-p4
+    schema: cadence_raw
+    tables:
+
+      # --- Spotify DSA bronze (9 sheets × 4 products unioned per sheet) ---
+
+      - name: raw_dsa_report_identification
+        description: "DSA report identification metadata (publication date, period, service name)."
+        meta:
+          external_location: "read_parquet('precache/dsa_reports/parquet/*/report_identification.parquet', union_by_name=true)"
+        columns:
+          - name: source_product
+            description: "Product line: main | artists | authors | creators"
+          - name: source_sha256
+            description: "SHA-256 of the originating XLSX file — provenance to the published Spotify report"
+
+      - name: raw_dsa_categories_names
+        description: "EU harmonised template's canonical 100-row category taxonomy."
+        meta:
+          external_location: "read_parquet('precache/dsa_reports/parquet/*/categories_names.parquet', union_by_name=true)"
+
+      - name: raw_dsa_member_states_orders
+        description: "Per-EU-Member-State orders received by Spotify (Art. 17 DSA)."
+        meta:
+          external_location: "read_parquet('precache/dsa_reports/parquet/*/member_states_orders.parquet', union_by_name=true)"
+
+      - name: raw_dsa_notices
+        description: "Notices received (Art. 16 DSA) per category, including Trusted Flagger splits."
+        meta:
+          external_location: "read_parquet('precache/dsa_reports/parquet/*/notices.parquet', union_by_name=true)"
+
+      - name: raw_dsa_own_initiative_illegal
+        description: "Own-initiative measures against illegal content."
+        meta:
+          external_location: "read_parquet('precache/dsa_reports/parquet/*/own_initiative_illegal.parquet', union_by_name=true)"
+
+      - name: raw_dsa_own_initiative_tc
+        description: "Own-initiative measures against terms-of-service violations."
+        meta:
+          external_location: "read_parquet('precache/dsa_reports/parquet/*/own_initiative_tc.parquet', union_by_name=true)"
+
+      - name: raw_dsa_appeals_and_recidivism
+        description: "Internal complaints mechanism + recidivism indicators (Art. 24 DSA)."
+        meta:
+          external_location: "read_parquet('precache/dsa_reports/parquet/*/appeals_and_recidivism.parquet', union_by_name=true)"
+
+      - name: raw_dsa_automated_means
+        description: "Automated means usage in moderation: counts, accuracy/precision/recall."
+        meta:
+          external_location: "read_parquet('precache/dsa_reports/parquet/*/automated_means.parquet', union_by_name=true)"
+
+      - name: raw_dsa_qualitative
+        description: "Free-text qualitative disclosures (description of automation, safeguards, etc.)."
+        meta:
+          external_location: "read_parquet('precache/dsa_reports/parquet/*/qualitative.parquet', union_by_name=true)"
+
+      # --- Synthetic bronze (clearly labeled, generated deterministically) ---
+
+      - name: raw_users_synth
+        description: "Synthetic user records — 100k baseline + fraud-injected bot ring/family-plan users."
+        meta:
+          external_location: "read_parquet('precache/synth/raw_users_synth.parquet')"
+
+      - name: raw_artists_synth
+        description: "Synthetic artist records — 40k baseline + fraud-injected AI/geo/playlist-stuffing artists."
+        meta:
+          external_location: "read_parquet('precache/synth/raw_artists_synth.parquet')"
+
+      - name: raw_tracks_synth
+        description: "Synthetic track records — 200k baseline + fraud-injected scenario tracks."
+        meta:
+          external_location: "read_parquet('precache/synth/raw_tracks_synth.parquet')"
+
+      - name: raw_streams_synth
+        description: "Synthetic stream events — 5M baseline + ~61k fraud-injected streams."
+        meta:
+          external_location: "read_parquet('precache/synth/raw_streams_synth.parquet')"
+
+      - name: raw_moderation_actions_synth
+        description: "Synthetic moderation actions paralleling DSA category structure."
+        meta:
+          external_location: "read_parquet('precache/synth/raw_moderation_actions_synth.parquet')"
+
+      - name: raw_appeals_synth
+        description: "Synthetic appeals lifecycle (filed → resolved → upheld/reversed)."
+        meta:
+          external_location: "read_parquet('precache/synth/raw_appeals_synth.parquet')"
+
+      - name: raw_llm_verdicts
+        description: "Pre-cached LLM moderation verdicts (5 scenarios × 3 providers = 15 rows)."
+        meta:
+          external_location: "read_parquet('precache/synth/raw_llm_verdicts.parquet')"

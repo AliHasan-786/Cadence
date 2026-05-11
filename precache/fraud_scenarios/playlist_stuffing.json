@@ -1,0 +1,42 @@
+{
+  "artist_ids": [
+    "a_99300000",
+    "a_99300001",
+    "a_99300002",
+    "a_99300003"
+  ],
+  "description": "One user plays 20 lo-fi tracks back-to-back in a single session; 16/20 are AI-generated; 4 new artists from BG/RO/VN/PH",
+  "expected_score_min": 80,
+  "expected_signals": [
+    "playlist_stuffing",
+    "ai_density"
+  ],
+  "n_streams_added": 20,
+  "scenario_id": "playlist_stuffing",
+  "session_id": "se_f909dc09c8cc",
+  "track_ids": [
+    "t_99300000",
+    "t_99300001",
+    "t_99300002",
+    "t_99300003",
+    "t_99300004",
+    "t_99300005",
+    "t_99300006",
+    "t_99300007",
+    "t_99300008",
+    "t_99300009",
+    "t_99300010",
+    "t_99300011",
+    "t_99300012",
+    "t_99300013",
+    "t_99300014",
+    "t_99300015",
+    "t_99300016",
+    "t_99300017",
+    "t_99300018",
+    "t_99300019"
+  ],
+  "user_ids": [
+    "u_00056043"
+  ]
+}

@@ -1,0 +1,83 @@
+version: 2
+
+models:
+
+  - name: fct_llm_verdicts
+    description: "Canonical LLM verdict fact, joined to heuristic context."
+    columns:
+      - name: verdict_id
+        tests:
+          - not_null
+          - unique
+      - name: scenario_id
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['bot_ring', 'ai_fake_artists', 'family_plan_abuse',
+                       'geographic_anomaly', 'playlist_stuffing']
+      - name: provider
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['anthropic', 'openai', 'google']
+      - name: status
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['ok', 'skipped_no_key', 'malformed_response', 'api_error']
+      - name: llm_agrees_with_heuristic
+        tests:
+          - accepted_values:
+              values: [0, 1]
+              quote: false
+              config:
+                where: "llm_agrees_with_heuristic IS NOT NULL"
+
+  - name: rpt_llm_agreement_rate
+    description: "Per-scenario LLM agreement metrics (2-of-3 + 3-of-3)."
+    columns:
+      - name: scenario_id
+        tests:
+          - not_null
+          - unique
+      - name: two_of_three_agree
+        tests:
+          - not_null
+          - accepted_values:
+              values: [0, 1]
+              quote: false
+      - name: unanimous_agree
+        tests:
+          - not_null
+          - accepted_values:
+              values: [0, 1]
+              quote: false
+
+  - name: rpt_llm_latency_distribution
+    description: "Per-provider latency distribution (OK verdicts only)."
+    columns:
+      - name: provider
+        tests:
+          - not_null
+          - unique
+
+  - name: rpt_llm_cost_breakdown
+    description: "Per-provider pre-cache spend. Total must be < $10."
+    columns:
+      - name: provider
+        tests:
+          - not_null
+          - unique
+
+  - name: rpt_llm_drift_score
+    description: "Per-provider drift score. NULL on first run (need ≥2 snapshots)."
+    columns:
+      - name: provider
+        tests:
+          - not_null
+          - unique
+      - name: drift_status
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['no_prior_snapshot', 'within_tolerance', 'drift_detected']

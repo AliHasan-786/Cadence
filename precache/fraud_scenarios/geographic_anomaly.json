@@ -1,0 +1,25 @@
+{
+  "artist_ids": [
+    "a_99200000"
+  ],
+  "concentration_country": "JP",
+  "description": "US-registered artist; 83% of streams to their 10 tracks come from JP",
+  "expected_score_min": 75,
+  "expected_signals": [
+    "geo_anomaly"
+  ],
+  "n_streams_added": 1200,
+  "scenario_id": "geographic_anomaly",
+  "track_ids": [
+    "t_99200000",
+    "t_99200001",
+    "t_99200002",
+    "t_99200003",
+    "t_99200004",
+    "t_99200005",
+    "t_99200006",
+    "t_99200007",
+    "t_99200008",
+    "t_99200009"
+  ]
+}

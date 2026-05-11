@@ -1,0 +1,191 @@
+version: 2
+
+models:
+
+  # ─── Dimensions ──────────────────────────────────────────────────────────
+
+  - name: dim_dsa_reporting_periods
+    description: "Period dimension. 1 row today (annual_2025); designed to grow."
+    columns:
+      - name: reporting_period_id
+        tests:
+          - not_null
+          - unique
+      - name: reporting_period_start
+        tests: [not_null]
+      - name: reporting_period_end
+        tests: [not_null]
+      - name: period_granularity
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['annual', 'biannual', 'quarterly', 'other']
+
+  - name: dim_dsa_products
+    description: "The four Spotify product lines (PRD §2.1)."
+    columns:
+      - name: product_id
+        tests:
+          - not_null
+          - unique
+          - accepted_values:
+              values: ['main', 'artists', 'authors', 'creators']
+      - name: display_name
+        tests: [not_null]
+      - name: service_kind
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['music_streaming', 'music_artist_platform', 'audiobook_author_platform', 'podcast_creator_platform']
+
+  - name: dim_dsa_categories
+    description: "EU harmonised template's category taxonomy (100 entries)."
+    columns:
+      - name: category_id
+        tests:
+          - not_null
+          - unique
+      - name: category_label
+        tests: [not_null]
+      - name: category_level
+        tests:
+          - accepted_values:
+              values: ['aggregate', 'top_level', 'sub_category']
+
+  - name: dim_eu_member_states
+    description: "EU Member States seed (27 + GR/EL alias + EU_AGGREGATE sentinel)."
+    columns:
+      - name: member_state_id
+        tests:
+          - not_null
+          - unique
+      - name: is_eu
+        tests: [not_null]
+
+  # ─── Facts ──────────────────────────────────────────────────────────────
+
+  - name: fct_dsa_decisions
+    description: "Canonical moderation-decision fact. Grain: (product, period, category)."
+    columns:
+      - name: product_line
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_dsa_products')
+              field: product_id
+      - name: reporting_period_canonical
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_dsa_reporting_periods')
+              field: reporting_period_id
+      - name: category_code
+        description: |
+          References the EU harmonised template's category code. Note: KEYWORD_OTHER
+          is shared across many sub-categories — see `assert_dsa_categories_consistent_2025`
+          for the membership check rather than a 1:1 relationships test.
+        tests: [not_null]
+      - name: total_decisions
+        tests: [not_null]
+      - name: automated_share_pct
+        description: "NULL for category rows with 0 total decisions."
+
+  - name: fct_dsa_appeals
+    description: "Appeals lifecycle fact. Grain: (product, period). 4 rows today."
+    columns:
+      - name: product_line
+        tests:
+          - not_null
+          - unique
+          - relationships:
+              to: ref('dim_dsa_products')
+              field: product_id
+
+  - name: fct_dsa_eu_orders
+    description: "Member-state orders fact (Art. 17). 2025 disclosures roll to EU_AGGREGATE."
+    columns:
+      - name: product_line
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_dsa_products')
+              field: product_id
+      - name: member_state_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_eu_member_states')
+              field: member_state_id
+
+  # ─── Reports (the headline dashboard queries) ───────────────────────────
+
+  - name: rpt_cross_product_summary
+    description: "THE headline. One row per product × period — drives the executive Looker dashboard."
+    columns:
+      - name: product_line
+        tests:
+          - not_null
+          - unique
+          - accepted_values:
+              values: ['main', 'artists', 'authors', 'creators']
+      - name: total_decisions
+        tests: [not_null]
+      - name: notices_received
+        tests: [not_null]
+      - name: automated_share_pct
+        description: "NULL when total_decisions = 0 (Authors has near-zero base)."
+
+  - name: rpt_quarter_over_quarter_trends
+    description: "Time-series view. Handles 1-period case gracefully via n_periods_available."
+    columns:
+      - name: product_line
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['main', 'artists', 'authors', 'creators']
+      - name: period_seq
+        tests: [not_null]
+      - name: n_periods_available
+        tests: [not_null]
+
+  - name: rpt_member_state_breakdown
+    description: "Per-Member-State drilldown. Today rolls to EU_AGGREGATE."
+    columns:
+      - name: product_line
+        tests:
+          - not_null
+      - name: member_state_id
+        tests: [not_null]
+
+  - name: rpt_automated_vs_human
+    description: "Surfaces the Main-conservative / Artists-aggressive automation posture finding."
+    columns:
+      - name: product_line
+        tests:
+          - not_null
+          - unique
+          - accepted_values:
+              values: ['main', 'artists', 'authors', 'creators']
+      - name: automation_posture
+        tests:
+          - accepted_values:
+              values: ['conservative', 'aggressive', 'balanced']
+
+  - name: rpt_appeals_lifecycle
+    description: "Appeals view per product. Today: complaints_submitted disclosed; rest NULL."
+    columns:
+      - name: product_line
+        tests:
+          - not_null
+          - unique
+          - accepted_values:
+              values: ['main', 'artists', 'authors', 'creators']
+
+seeds:
+  - name: eu_member_states
+    description: "EU Member States with GR/EL alias and EU_AGGREGATE sentinel."
+    columns:
+      - name: member_state_code
+        tests: [not_null]
+      - name: is_eu
+        tests: [not_null]

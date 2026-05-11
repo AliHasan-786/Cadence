@@ -1,0 +1,79 @@
+name: "cadence"
+version: "0.1.0"
+config-version: 2
+
+profile: "cadence"
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["models/snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  cadence:
+    staging:
+      +materialized: view
+      +schema: staging
+    intermediate:
+      +materialized: view
+      +schema: intermediate
+    marts:
+      +materialized: table
+      transparency:
+        +schema: marts_transparency
+      safety:
+        +schema: marts_safety
+      llm_ops:
+        +schema: marts_llm_ops
+      researcher:
+        +schema: marts_researcher
+
+seeds:
+  cadence:
+    +schema: seeds
+
+vars:
+  bq_project: "spry-smithy-489221-p4"
+  bq_dataset_raw: "cadence_raw"
+  bq_dataset: "cadence"
+
+  # ─────────────────────────────────────────────────────────────────────
+  # Safety-metrics config — MIRROR of models/semantic/safety_metrics.yml
+  # ─────────────────────────────────────────────────────────────────────
+  # safety_metrics.yml is the human-readable source of truth (rendered into
+  # the Methodology page in Sprint 13). This block mirrors it for dbt-Jinja
+  # access. Keep in sync — a Sprint 9 CI check will assert equivalence.
+  safety_metrics:
+    weights:
+      listen_spike: 0.30
+      geo_anomaly: 0.50
+      stream_to_listener_ratio: 0.30
+      repeat_listener_concentration: 0.40
+      playlist_stuffing: 0.50
+    thresholds:
+      listen_spike:
+        baseline_multiplier: 10.0
+        min_baseline_streams_per_day: 0.10
+      geo_anomaly:
+        single_country_share: 0.80
+        min_streams: 100
+      stream_to_listener_ratio:
+        ratio: 4.0
+        min_streams: 200
+      repeat_listener_concentration:
+        hhi: 0.20
+        min_streams: 50
+      playlist_stuffing:
+        ai_share: 0.50
+        min_session_tracks: 5
+    action_thresholds:
+      recommend_remove: 70
+      recommend_rank_lower: 40
+    severity_cap: 3.0  # Per-signal severity max (1.0 = barely fires; 3.0 = fires hard)

@@ -1,0 +1,271 @@
+version: 2
+
+models:
+
+  # =========================================================================
+  # DSA staging — 9 models, one per harmonised-template sheet
+  # =========================================================================
+
+  - name: stg_dsa_report_identification
+    description: "Typed report metadata (publication date, period, service name). 20 rows total."
+    columns:
+      - name: product_line
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['main', 'artists', 'authors', 'creators']
+      - name: reporting_period_canonical
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['annual_2025']
+      - name: source_sha256
+        tests: [not_null]
+
+  - name: stg_dsa_categories_names
+    description: "EU harmonised template taxonomy (100 rows × 4 products = 400 rows)."
+    columns:
+      - name: product_line
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['main', 'artists', 'authors', 'creators']
+      - name: category_label
+        tests: [not_null]
+      - name: source_sha256
+        tests: [not_null]
+
+  - name: stg_dsa_member_states_orders
+    description: "Per-EU-Member-State orders received (Art. 17 DSA)."
+    columns:
+      - name: product_line
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['main', 'artists', 'authors', 'creators']
+      - name: reporting_period_canonical
+        tests: [not_null]
+      - name: scope
+        tests: [not_null]
+      - name: orders_to_act
+        description: "Nullable: blank for category rows where Spotify didn't disclose."
+
+  - name: stg_dsa_notices
+    description: "Notices received (Art. 16 DSA) per category. Headline figures for Sprint 5's int_dsa_unified."
+    columns:
+      - name: product_line
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['main', 'artists', 'authors', 'creators']
+      - name: reporting_period_canonical
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['annual_2025']
+      - name: category_code
+        tests: [not_null]
+      - name: source_sha256
+        tests: [not_null]
+
+  - name: stg_dsa_own_initiative_illegal
+    description: "Own-initiative measures against illegal content (sheet 5)."
+    columns:
+      - name: product_line
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['main', 'artists', 'authors', 'creators']
+
+  - name: stg_dsa_own_initiative_tc
+    description: "Own-initiative measures against T&C violations (sheet 6)."
+    columns:
+      - name: product_line
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['main', 'artists', 'authors', 'creators']
+
+  - name: stg_dsa_appeals_and_recidivism
+    description: |
+      Internal complaints + recidivism (Art. 24 DSA). Sparse — Spotify discloses
+      one indicator (complaints submitted) per product.
+    columns:
+      - name: product_line
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['main', 'artists', 'authors', 'creators']
+      - name: section
+        tests: [not_null]
+      - name: indicator
+        tests: [not_null]
+
+  - name: stg_dsa_automated_means
+    description: "Automated moderation usage: counts + accuracy/precision/recall."
+    columns:
+      - name: product_line
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['main', 'artists', 'authors', 'creators']
+      - name: quality_metric_kind
+        description: "Derived from indicator text. NULL for non-quality rows."
+        tests:
+          - accepted_values:
+              values: ['accuracy', 'precision', 'recall']
+              config:
+                where: "quality_metric_kind IS NOT NULL"
+
+  - name: stg_dsa_qualitative
+    description: "Free-text qualitative disclosures."
+    columns:
+      - name: product_line
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['main', 'artists', 'authors', 'creators']
+      - name: narrative_text
+        tests: [not_null]
+
+  # =========================================================================
+  # Synth staging — 6 models
+  # =========================================================================
+
+  - name: stg_synth_users
+    description: "100k baseline + ~210 fraud-injected synthetic users."
+    columns:
+      - name: user_id
+        tests:
+          - not_null
+          - unique
+      - name: country_iso2
+        tests: [not_null]
+      - name: plan_type
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['free', 'individual', 'duo', 'family', 'student']
+      - name: age_band
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['13-17', '18-24', '25-34', '35-44', '45-54', '55+']
+
+  - name: stg_synth_artists
+    description: "40k baseline + 10 fraud-injected synthetic artists."
+    columns:
+      - name: artist_id
+        tests:
+          - not_null
+          - unique
+      - name: monthly_listeners
+        tests: [not_null]
+
+  - name: stg_synth_tracks
+    description: "200k baseline + 60 fraud-injected synthetic tracks."
+    columns:
+      - name: track_id
+        tests:
+          - not_null
+          - unique
+      - name: artist_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_synth_artists')
+              field: artist_id
+      - name: ai_generated_label
+        tests: [not_null]
+
+  - name: stg_synth_streams
+    description: "5M baseline + ~61k fraud-injected stream events."
+    columns:
+      - name: stream_id
+        tests:
+          - not_null
+          - unique
+      - name: user_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_synth_users')
+              field: user_id
+      - name: track_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_synth_tracks')
+              field: track_id
+      - name: device
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['web', 'ios', 'android', 'desktop', 'tv', 'speaker']
+
+  - name: stg_synth_moderation_actions
+    description: "60k synthetic moderation actions."
+    columns:
+      - name: action_id
+        tests:
+          - not_null
+          - unique
+      - name: subject_type
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['track', 'user', 'artist']
+      - name: decision_basis
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['automated', 'manual', 'hybrid']
+
+  - name: stg_synth_appeals
+    description: "8k synthetic appeals."
+    columns:
+      - name: appeal_id
+        tests:
+          - not_null
+          - unique
+      - name: action_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_synth_moderation_actions')
+              field: action_id
+      - name: status
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['upheld', 'reversed', 'pending']
+
+  - name: stg_llm_verdicts
+    description: "Typed LLM verdicts (15 rows = 5 scenarios × 3 providers)."
+    columns:
+      - name: verdict_id
+        tests:
+          - not_null
+          - unique
+      - name: scenario_id
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['bot_ring', 'ai_fake_artists', 'family_plan_abuse',
+                       'geographic_anomaly', 'playlist_stuffing']
+      - name: provider
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['anthropic', 'openai', 'google']
+      - name: status
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['ok', 'skipped_no_key', 'malformed_response', 'api_error']
+      - name: recommendation
+        tests:
+          - accepted_values:
+              values: ['recommend_no_action', 'recommend_rank_lower', 'recommend_remove']
+              config:
+                where: "recommendation IS NOT NULL"

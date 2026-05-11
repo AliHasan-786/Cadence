@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          version: "0.10.9"
+      - run: uv sync --frozen
+      - run: uv run pre-commit run --all-files
+
+  # Subsequent jobs (dbt-duckdb, dbt-bigquery, publish-docs, airflow-dag-test, api-test)
+  # land in later sprints once their respective code exists. Skeleton intentional — keeps
+  # the badge green from day one without claiming work that hasn't shipped.

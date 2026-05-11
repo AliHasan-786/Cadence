@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+.uv-cache/
+
+# uv
+uv.lock.bak
+
+# dbt
+target/
+dbt_packages/
+logs/
+profiles.yml
+.user.yml
+
+# DuckDB
+.duckdb/
+*.duckdb
+
+# Credentials — never commit
+*.json.key
+service-account*.json
+cadence-sa*.json
+.env
+.env.local
+
+# Raw downloaded XLSX (cache only — re-fetchable via ingest.fetch_spotify_dsa)
+precache/dsa_reports/raw/
+
+# Synthetic data Parquet — 200MB total, exceeds GitHub's per-file limits.
+# Regenerable in 10s via `uv run python -m ingest.synth_generate`.
+precache/synth/
+
+# LLM verdict transcripts contain prompts that include scenario data — small,
+# but generated fresh per pre-cache run; not part of source.
+precache/fraud_scenarios/llm_verdicts/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/
+*.swp
+
+# Claude Code local state
+.claude/
+
+# Test / coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage

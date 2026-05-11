@@ -1,0 +1,112 @@
+version: 2
+
+# =============================================================================
+# Cadence — Transparency Metrics
+# =============================================================================
+# MetricFlow semantic models + metrics for the DSA cross-product dashboards.
+# Mirrors looker/views/transparency.view.lkml + looker/cadence.model.lkml.
+
+semantic_models:
+  - name: dsa_decisions
+    description: |
+      Cross-product DSA moderation-decision fact. Powers the executive
+      Looker Studio dashboard + the Next.js Cross-Product page.
+    model: ref('fct_dsa_decisions')
+    defaults:
+      agg_time_dimension: reporting_period_start
+    entities:
+      - name: decision
+        type: primary
+        expr: CONCAT(product_line, '|', reporting_period_canonical, '|', category_code)
+      - name: product
+        type: foreign
+        expr: product_line
+      - name: category
+        type: foreign
+        expr: category_code
+    dimensions:
+      - name: product_line
+        type: categorical
+      - name: reporting_period_canonical
+        type: categorical
+      - name: category_code
+        type: categorical
+      - name: reporting_period_start
+        type: time
+        type_params:
+          time_granularity: day
+    measures:
+      - name: total_decisions
+        agg: sum
+        expr: total_decisions
+      - name: automated_decisions
+        agg: sum
+        expr: automated_decisions
+      - name: notices_received_total
+        agg: sum
+        expr: notices_received
+      - name: actions_on_notice_total
+        agg: sum
+        expr: actions_on_notice_total
+
+  - name: dsa_appeals
+    description: "Appeals lifecycle fact (Art. 24)."
+    model: ref('fct_dsa_appeals')
+    defaults:
+      agg_time_dimension: reporting_period_start
+    entities:
+      - name: appeal
+        type: primary
+        expr: CONCAT(product_line, '|', reporting_period_canonical)
+    dimensions:
+      - name: product_line
+        type: categorical
+      - name: reporting_period_start
+        type: time
+        type_params:
+          time_granularity: day
+    measures:
+      - name: complaints_submitted_total
+        agg: sum
+        expr: complaints_submitted
+
+metrics:
+  - name: dsa_decisions_total
+    description: |
+      Total moderation decisions disclosed in Spotify's DSA Transparency
+      Reports across all four product lines per reporting period.
+    type: simple
+    label: "DSA Decisions Total"
+    type_params:
+      measure: total_decisions
+
+  - name: dsa_automated_decisions
+    description: "Total automated moderation decisions."
+    type: simple
+    label: "DSA Automated Decisions"
+    type_params:
+      measure: automated_decisions
+
+  - name: dsa_automated_share
+    description: "Ratio of automated to total moderation decisions."
+    type: ratio
+    label: "DSA Automated Share"
+    type_params:
+      numerator: dsa_automated_decisions
+      denominator: dsa_decisions_total
+
+  - name: dsa_notices_received
+    description: "Total notices received per Art. 16."
+    type: simple
+    label: "DSA Notices Received"
+    type_params:
+      measure: notices_received_total
+
+  - name: dsa_complaints_submitted
+    description: |
+      Total complaints submitted to Spotify's internal-complaints mechanism
+      (Art. 24).
+    type: simple
+    label: "DSA Internal Complaints"
+    type_params:
+      measure: complaints_submitted_total

@@ -1,0 +1,138 @@
+version: 2
+
+models:
+
+  - name: sig_listen_spike
+    description: "Detection signal 1 — sudden spike in streams/day vs prior 83-day baseline."
+    columns:
+      - name: track_id
+        tests:
+          - not_null
+          - unique
+      - name: fires
+        tests:
+          - not_null
+          - accepted_values:
+              values: [0, 1]
+              quote: false
+      - name: severity
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 3.01  # severity_cap is 3.0; allow tiny float headroom
+
+  - name: sig_geo_anomaly
+    description: "Detection signal 2 — single-country concentration vs artist home country."
+    columns:
+      - name: track_id
+        tests:
+          - not_null
+          - unique
+      - name: fires
+        tests:
+          - not_null
+          - accepted_values:
+              values: [0, 1]
+              quote: false
+      - name: top_country_share
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0.0
+              max_value: 1.0
+
+  - name: sig_stream_to_listener_ratio
+    description: "Detection signal 3 — total-streams ÷ distinct-listeners."
+    columns:
+      - name: track_id
+        tests:
+          - not_null
+          - unique
+      - name: fires
+        tests:
+          - not_null
+          - accepted_values:
+              values: [0, 1]
+              quote: false
+      - name: streams_per_listener
+        description: "NULL for tracks with zero distinct listeners (shouldn't happen post-aggregation)."
+
+  - name: sig_repeat_listener_concentration
+    description: "Detection signal 4 — HHI of streams across households per track."
+    columns:
+      - name: track_id
+        tests:
+          - not_null
+          - unique
+      - name: fires
+        tests:
+          - not_null
+          - accepted_values:
+              values: [0, 1]
+              quote: false
+      - name: hhi_value
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0.0
+              max_value: 1.0001  # HHI ≤ 1.0; tiny float headroom
+
+  - name: sig_playlist_stuffing
+    description: "Detection signal 5 — track in a session with ≥50% AI-generated tracks."
+    columns:
+      - name: track_id
+        tests:
+          - not_null
+          - unique
+      - name: fires
+        tests:
+          - not_null
+          - accepted_values:
+              values: [1]   # this view only includes tracks that fired
+              quote: false
+
+  - name: fct_artificial_streaming_flags
+    description: "Composite suspicion-score fact. Weights from safety_metrics.yml."
+    columns:
+      - name: track_id
+        tests:
+          - not_null
+          - unique
+      - name: composite_suspicion_score
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 100
+      - name: recommended_action
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['recommend_remove', 'recommend_rank_lower', 'no_action']
+      - name: n_signals_fired
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 5
+
+seeds:
+  - name: fraud_scenario_expectations
+    description: |
+      Per-track expected minimum composite score for each of the 5 embedded
+      fraud scenarios. Built from precache/fraud_scenarios/*.json via
+      scripts/build_fraud_seed.py.
+    columns:
+      - name: scenario_id
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['bot_ring', 'ai_fake_artists', 'family_plan_abuse',
+                       'geographic_anomaly', 'playlist_stuffing']
+      - name: track_id
+        tests: [not_null]
+      - name: expected_min_score
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 100

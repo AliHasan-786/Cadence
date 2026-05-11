@@ -1,0 +1,53 @@
+version: 2
+
+models:
+
+  - name: int_dsa_period_aligned
+    description: "Period dimension scaffold. 1 row today (annual_2025); grows as more periods land."
+    columns:
+      - name: reporting_period_canonical
+        tests:
+          - not_null
+          - unique
+      - name: period_days
+        tests: [not_null]
+
+  - name: int_dsa_unified
+    description: "Cross-product, cross-sheet unification. Grain: (product_line, period, category_code)."
+    columns:
+      - name: product_line
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['main', 'artists', 'authors', 'creators']
+      - name: reporting_period_canonical
+        tests: [not_null]
+      - name: total_decisions
+        tests: [not_null]
+      - name: automated_decisions
+        tests: [not_null]
+
+  - name: int_dsa_automated_quality
+    description: "Wide pivot of stg_dsa_automated_means. Grain: (product_line, scope). 12 rows."
+    columns:
+      - name: product_line
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['main', 'artists', 'authors', 'creators']
+      - name: scope
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Total number', 'Own-initiative ', 'NAM Total']
+
+  - name: int_dsa_appeals
+    description: "Wide pivot of stg_dsa_appeals_and_recidivism. Grain: (product_line, period). 4 rows."
+    columns:
+      - name: product_line
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['main', 'artists', 'authors', 'creators']
+      - name: complaints_submitted
+        tests: [not_null]

@@ -1,0 +1,34 @@
+cadence:
+  target: dev
+  outputs:
+
+    # Local development against DuckDB. Same dbt project, portable warehouse.
+    dev:
+      type: duckdb
+      path: "./.duckdb/cadence_dev.duckdb"
+      threads: 4
+
+    # Production: BigQuery via service-account key.
+    # Drop your key at ~/.config/gcloud/cadence-sa.json (or override via env var).
+    prod:
+      type: bigquery
+      method: service-account
+      keyfile: "{{ env_var('GOOGLE_APPLICATION_CREDENTIALS', '~/.config/gcloud/cadence-sa.json') }}"
+      project: "spry-smithy-489221-p4"
+      dataset: "cadence"
+      location: "US"
+      threads: 4
+      priority: interactive
+      timeout_seconds: 300
+
+    # CI: same as prod but isolated dataset so PRs can't clobber prod.
+    prod_ci:
+      type: bigquery
+      method: service-account
+      keyfile: "{{ env_var('GOOGLE_APPLICATION_CREDENTIALS', '~/.config/gcloud/cadence-sa.json') }}"
+      project: "spry-smithy-489221-p4"
+      dataset: "cadence_ci"
+      location: "US"
+      threads: 4
+      priority: interactive
+      timeout_seconds: 300

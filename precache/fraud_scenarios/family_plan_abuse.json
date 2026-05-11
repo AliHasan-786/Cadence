@@ -1,0 +1,20 @@
+{
+  "description": "Family plan (5 users, 1 household) plays one niche track 120 times in 24h",
+  "expected_score_min": 70,
+  "expected_signals": [
+    "repeat_listener_concentration"
+  ],
+  "household_id": "h_99100000",
+  "n_streams_added": 120,
+  "scenario_id": "family_plan_abuse",
+  "track_ids": [
+    "t_00128428"
+  ],
+  "user_ids": [
+    "u_99100000",
+    "u_99100001",
+    "u_99100002",
+    "u_99100003",
+    "u_99100004"
+  ]
+}

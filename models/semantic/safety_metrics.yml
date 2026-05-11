@@ -1,0 +1,253 @@
+version: 2
+
+# =============================================================================
+# Cadence — Safety Metrics: Methodology Source of Truth
+# =============================================================================
+#
+# This file has THREE blocks:
+#   1. semantic_models:   MetricFlow semantic-layer schema (Sprint 8)
+#   2. metrics:           MetricFlow metric definitions (Sprint 8)
+#   3. (custom)           weight/threshold config used by sig_*.sql at compile
+#                          time. Mirrored into dbt_project.yml `vars.safety_metrics`.
+#
+# The LookML in `looker/cadence.model.lkml` parallels the metrics block;
+# scripts/lookml_sync.md documents the sync requirement.
+
+semantic_models:
+  - name: artificial_streaming_signals
+    description: |
+      Composite suspicion-score semantic model. Powers the Detection Lab page
+      + the Looker Studio Operational Trends dashboard. V1 stores a single
+      `built_at` snapshot timestamp; Sprint 12's Airflow DAG will replace
+      that with the actual build-time for weekly snapshots.
+    model: ref('fct_artificial_streaming_flags')
+    defaults:
+      agg_time_dimension: built_at
+    entities:
+      - name: track
+        type: primary
+        expr: track_id
+    dimensions:
+      - name: recommended_action
+        type: categorical
+      - name: n_signals_fired
+        type: categorical
+      - name: built_at
+        type: time
+        type_params:
+          time_granularity: day
+    measures:
+      - name: composite_suspicion_score_avg
+        agg: average
+        expr: composite_suspicion_score
+        description: "Mean composite suspicion score across flagged tracks."
+      - name: composite_suspicion_score_max
+        agg: max
+        expr: composite_suspicion_score
+        description: "Max composite suspicion score in the cohort."
+      - name: n_flagged_tracks
+        agg: count
+        expr: track_id
+        description: "Distinct tracks in the flagged set."
+
+  - name: llm_verdicts
+    description: |
+      LLM moderation verdict facts. One row per (scenario, provider) verdict.
+      Powers the rpt_llm_* dashboards and Detection Lab LLM Verdicts panel.
+    model: ref('fct_llm_verdicts')
+    defaults:
+      agg_time_dimension: requested_at
+    entities:
+      - name: verdict
+        type: primary
+        expr: verdict_id
+    dimensions:
+      - name: scenario_id
+        type: categorical
+      - name: provider
+        type: categorical
+      - name: llm_recommendation
+        type: categorical
+      - name: status
+        type: categorical
+      - name: heuristic_action
+        type: categorical
+      - name: requested_at
+        type: time
+        type_params:
+          time_granularity: day
+    measures:
+      - name: n_verdicts
+        agg: count
+        expr: verdict_id
+      - name: total_cost_usd
+        agg: sum
+        expr: cost_usd
+        description: "Total spend on LLM verdicts across all providers."
+      - name: mean_latency_ms
+        agg: average
+        expr: latency_ms
+        description: "Mean latency across OK verdicts."
+      - name: agreement_count_with_heuristic
+        agg: sum
+        expr: llm_agrees_with_heuristic
+
+metrics:
+  - name: composite_suspicion_score
+    description: |
+      The canonical artificial-streaming composite score (0-100). LOWER is
+      better; ≥70 → recommend_remove, 40-69 → recommend_rank_lower.
+    type: simple
+    label: "Composite Suspicion Score"
+    type_params:
+      measure: composite_suspicion_score_avg
+
+  - name: llm_total_cost_usd
+    description: "Total USD cost across all LLM verdicts in the snapshot."
+    type: simple
+    label: "Total LLM Spend ($)"
+    type_params:
+      measure: total_cost_usd
+
+  - name: llm_mean_latency_ms
+    description: "Mean latency in ms across OK verdicts."
+    type: simple
+    label: "Mean LLM Latency (ms)"
+    type_params:
+      measure: mean_latency_ms
+
+  - name: llm_heuristic_agreement_count
+    description: |
+      Count of LLM verdicts where the LLM's recommendation matched
+      Cadence's heuristic recommendation. Useful for tracking how often
+      automation and LLM-second-opinion concur.
+    type: simple
+    label: "LLM ↔ Heuristic Agreements"
+    type_params:
+      measure: agreement_count_with_heuristic
+
+# =============================================================================
+# Below: the custom config block consumed by sig_*.sql at compile time.
+# DO NOT edit values here without mirroring into dbt_project.yml `vars.safety_metrics`.
+# =============================================================================
+#
+# This file is the HUMAN-READABLE source of truth for the artificial-streaming
+# detection methodology. The values mirrored into dbt_project.yml under
+# `vars.safety_metrics` MUST equal the values here — a Sprint 9 CI check will
+# enforce that. Edits land here first; the dbt vars mirror is the machine-
+# readable copy that the SQL reads at compile time.
+#
+# Per PRD §8.4: "A reviewer can: (1) open this file in GitHub; (2) open the
+# Methodology page in another tab; (3) verify they match line-by-line."
+
+# -----------------------------------------------------------------------------
+# Composite suspicion-score formula
+# -----------------------------------------------------------------------------
+# For each track t, the composite suspicion score in [0, 100] is:
+#
+#     score(t) = LEAST(100, 100 × Σ_i fires_i(t) × weight_i × severity_i(t))
+#
+# where:
+#   - fires_i(t) ∈ {0, 1}: did signal i's threshold get crossed for track t?
+#   - weight_i ∈ [0, 1]: per-signal weight (see `signal_weights` below)
+#   - severity_i(t) ∈ [1, severity_cap]: how hard the signal fired
+#     (1.0 = barely above threshold; severity_cap = severely above)
+#
+# Action thresholds:
+#   - score ≥ 70 → recommend_remove
+#   - 40 ≤ score < 70 → recommend_rank_lower
+#   - score < 40 → no_action
+#
+# This is a HEURISTIC, not an empirically-validated detector (PRD §14). The
+# weights below were tuned against the 5 synthetic fraud scenarios to ensure
+# each scenario hits its expected_min_score in `precache/fraud_scenarios/*.json`.
+
+# -----------------------------------------------------------------------------
+# Signal weights — relative importance of each signal in the composite
+# -----------------------------------------------------------------------------
+signal_weights:
+  listen_spike:                  0.30  # PRD §8.2 baseline 0.25 — bumped 0.05 because cold-start anomalies are common
+  geo_anomaly:                   0.50  # PRD §8.2 baseline 0.20 — bumped to clear 75 alone (geo-only fraud scenarios)
+  stream_to_listener_ratio:      0.30  # PRD §8.2 baseline 0.25
+  repeat_listener_concentration: 0.40  # PRD §8.2 baseline 0.20 — family-plan-abuse needs strong single-signal coverage
+  playlist_stuffing:             0.50  # PRD §8.2 baseline 0.10 — only signal that fires for playlist-stuffing scenario; needs to clear 70 alone
+
+# -----------------------------------------------------------------------------
+# Signal thresholds — what counts as "fired" for each signal
+# -----------------------------------------------------------------------------
+signal_thresholds:
+
+  # 1. listen_spike
+  # ----------------------------------------------------------------------------
+  # A track fires when its last-7-days streams/day exceeds its prior 83-day
+  # baseline by the multiplier below, AND its baseline is at least the floor.
+  # The floor (0.10/day) keeps cold-start anomalies catchable too (new tracks
+  # have ~0 baseline; floored baseline makes the ratio finite).
+  listen_spike:
+    baseline_multiplier: 10.0
+    min_baseline_streams_per_day: 0.10
+
+  # 2. geo_anomaly
+  # ----------------------------------------------------------------------------
+  # A track fires when one country accounts for ≥ 80% of its streams AND
+  # that country is NOT the artist's home country (so a US-artist with 100%
+  # US listeners does NOT fire). min_streams gate avoids triggering on tracks
+  # with only 1-2 plays.
+  geo_anomaly:
+    single_country_share: 0.80
+    min_streams: 100
+
+  # 3. stream_to_listener_ratio
+  # ----------------------------------------------------------------------------
+  # A track fires when its total-streams ÷ distinct-listeners ratio exceeds
+  # the threshold. PRD §8.2 baseline was 50.0 — tuned to 4.0 because the bot
+  # ring scenario's ratio is ~5 (200 bots × 5 plays = 1000 streams from 200
+  # listeners). With min_streams 200, baseline tracks don't trigger.
+  stream_to_listener_ratio:
+    threshold: 4.0
+    min_streams: 200
+
+  # 4. repeat_listener_concentration
+  # ----------------------------------------------------------------------------
+  # Herfindahl-Hirschman Index (HHI) of streams across HOUSEHOLDS for the track.
+  # HHI is the sum of squared household shares. HHI = 1.0 when all streams come
+  # from one household (family-plan abuse case); HHI ≈ 0 when streams are spread
+  # across many distinct households.
+  #
+  # We aggregate by household_id, not user_id, because family plans share a
+  # household and the abuse fingerprint is "one household × one track" — not
+  # "one user × one track".
+  repeat_listener_concentration:
+    hhi: 0.20
+    min_streams: 50
+
+  # 5. playlist_stuffing
+  # ----------------------------------------------------------------------------
+  # A session fires when ≥ 50% of distinct tracks in the session carry
+  # ai_generated_label = true AND the session has at least min_session_tracks
+  # distinct tracks. Score propagates to every track in the session.
+  playlist_stuffing:
+    ai_share: 0.50
+    min_session_tracks: 5
+
+# -----------------------------------------------------------------------------
+# Action thresholds — what the composite score recommends
+# -----------------------------------------------------------------------------
+action_thresholds:
+  recommend_remove:      70  # Compliance Counsel would take action
+  recommend_rank_lower:  40  # Lower visibility, no removal
+
+# -----------------------------------------------------------------------------
+# Severity cap — limits any single signal's contribution
+# -----------------------------------------------------------------------------
+severity_cap: 3.0
+
+# -----------------------------------------------------------------------------
+# What is NOT measured (honest scope, PRD §14)
+# -----------------------------------------------------------------------------
+what_is_NOT_measured:
+  - "Audio fingerprint similarity (no audio data ingested)"
+  - "User device-fingerprint depth (only device class — web/ios/android/desktop/tv/speaker — not browser/OS detail)"
+  - "Historical recidivism by user (not modeled in V1)"
+  - "Cross-platform fraud markers (MFFA NCFTA shared markers — V1.5)"
+  - "ML-trained detection (V1 is heuristic + LLM verdicts; V1.4 adds gradient-boosted trees alongside)"

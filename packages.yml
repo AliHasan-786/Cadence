@@ -1,0 +1,8 @@
+packages:
+  - package: dbt-labs/dbt_utils
+    version: [">=1.2.0", "<2.0.0"]
+  # metaplane fork is the maintained successor to calogica/dbt_expectations
+  - package: metaplane/dbt_expectations
+    version: [">=0.10.0", "<1.0.0"]
+  - package: tnightengale/dbt_meta_testing
+    version: [">=0.3.7", "<1.0.0"]
