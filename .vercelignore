@@ -1,0 +1,40 @@
+# Vercel only needs api/, requirements.txt, vercel.json, runtime.txt.
+# Exclude everything else so the function bundle stays small and the
+# Python builder doesn't try to import unrelated modules.
+
+ingest/
+models/
+seeds/
+macros/
+analyses/
+tests/
+looker/
+scripts/
+airflow/
+web/
+docs/
+precache/
+target/
+dbt_packages/
+logs/
+.duckdb/
+.venv/
+.dbt/
+.claude/
+.github/
+
+# dbt + Python packaging files unrelated to the API
+dbt_project.yml
+profiles.yml.example
+packages.yml
+package-lock.yml
+pyproject.toml
+uv.lock
+.pre-commit-config.yaml
+
+# Local-only
+*.duckdb
+.env
+.env.local
+service-account*.json
+cadence-sa*.json
