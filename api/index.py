@@ -242,7 +242,9 @@ def audit_log(
             "requested_at": datetime.now(UTC).isoformat(),
             "client_ip_hash": key_ctx["client_ip_hash"],
         }
-        bq.insert_rows_json(f"{PROJECT_ID}.{RAW_DATASET}.raw_researcher_queries", [row])
+        errs = bq.insert_rows_json(f"{PROJECT_ID}.{RAW_DATASET}.raw_researcher_queries", [row])
+        if errs:
+            print(f"audit_log_partial: {errs}")
     except Exception as e:  # pragma: no cover — best-effort
         print(f"audit_log_failed: {e}")  # surfaces in Vercel logs
 
@@ -299,7 +301,7 @@ async def issue_key(body: KeyRequest):
     key_id = "rk_" + uuid.uuid4().hex[:24]
     email_hash = "sha256:" + hashlib.sha256(body.email.encode()).hexdigest()[:16]
     bq = get_bq()
-    bq.insert_rows_json(
+    errs = bq.insert_rows_json(
         f"{PROJECT_ID}.{RAW_DATASET}.raw_researcher_keys",
         [
             {
@@ -313,6 +315,8 @@ async def issue_key(body: KeyRequest):
             }
         ],
     )
+    if errs:
+        raise HTTPException(500, f"Failed to persist key: {errs}")
     return KeyResponse(
         key_id=key_id,
         issued_at=datetime.now(UTC).isoformat(),
