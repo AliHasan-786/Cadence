@@ -4,9 +4,18 @@
 
 A unified analytics engineering platform that ingests Spotify's four DSA Transparency Reports (Main, Artists, Authors, Creators), normalizes them through dbt on BigQuery, and surfaces them via Looker Studio, a Next.js frontend, and a DSA Article 40 researcher API.
 
+## Live URLs
+
+- **🔬 Researcher API:** https://cadence-ashen.vercel.app
+- **📖 API Swagger UI:** https://cadence-ashen.vercel.app/docs
+- **📊 Looker Studio — Cross-Product Executive Summary:** _(TBD — Sprint 10 dashboard build)_
+- **📈 Looker Studio — Operational Trends:** _(TBD — Sprint 10 dashboard build)_
+- **🗺️ Looker Studio — Member-State Heatmap:** _(TBD — Sprint 10 dashboard build)_
+- **🔧 dbt docs:** _(TBD — Sprint 16 GH Pages deploy)_
+
 ## Status
 
-**Sprint 0–2 complete.** DSA ingestion working against all four Spotify 2025 H2 reports → Parquet → BigQuery `cadence_raw`. dbt models, synthetic data, and Next.js app pending.
+**Sprints 0–11 deployed.** Real Spotify DSA data ingested + dbt marts + LLM verdicts + semantic layers + live researcher API.
 
 ## Stack (in flight)
 
