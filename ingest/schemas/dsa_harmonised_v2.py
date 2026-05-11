@@ -105,9 +105,7 @@ class CategoriesNamesRow(_Base):
         default=None,
         alias="Category of illegal content / incompatible with the terms and conditions",
     )
-    contextual_information: NullableStr = Field(
-        default=None, alias="Contextual information"
-    )
+    contextual_information: NullableStr = Field(default=None, alias="Contextual information")
 
 
 # ---------------------------------------------------------------------------
@@ -197,9 +195,7 @@ class NoticesRow(_Base):
     description_subcategory_other: NullableStr = Field(
         default=None, alias='Description of the sub-category "Other"'
     )
-    n_notices_received: NullableNum = Field(
-        default=None, alias="Number of notices received "
-    )
+    n_notices_received: NullableNum = Field(default=None, alias="Number of notices received ")
     n_notices_from_trusted_flaggers: NullableNum = Field(
         default=None, alias="Number of notices received from Trusted flaggers"
     )
@@ -317,30 +313,22 @@ class _OwnInitiativeBase(_Base):
     vis_restriction_labelled: NullableNum = Field(
         default=None, alias="Visibility restriction Labelled "
     )
-    vis_restriction_other: NullableNum = Field(
-        default=None, alias="Visibility restriction Other"
-    )
+    vis_restriction_other: NullableNum = Field(default=None, alias="Visibility restriction Other")
     mon_restriction_suspension: NullableNum = Field(
         default=None, alias="Monetary restriction Suspension"
     )
     mon_restriction_termination: NullableNum = Field(
         default=None, alias="Monetary restriction Termination"
     )
-    mon_restriction_other: NullableNum = Field(
-        default=None, alias="Monetary restriction Other"
-    )
+    mon_restriction_other: NullableNum = Field(default=None, alias="Monetary restriction Other")
     provision_suspension: NullableNum = Field(
         default=None, alias="Provision of the service Suspension"
     )
     provision_termination: NullableNum = Field(
         default=None, alias="Provision of the service Termination"
     )
-    account_suspension: NullableNum = Field(
-        default=None, alias="Account restriction Suspension"
-    )
-    account_termination: NullableNum = Field(
-        default=None, alias="Account restriction Termination"
-    )
+    account_suspension: NullableNum = Field(default=None, alias="Account restriction Suspension")
+    account_termination: NullableNum = Field(default=None, alias="Account restriction Termination")
     ctx_n_measures_own_initiative: NullableStr = Field(
         default=None,
         alias="Contextual Information on Number of measures taken at the provider's own initiative ",
@@ -427,9 +415,7 @@ class AppealsAndRecidivismRow(_Base):
     indicator: NullableStr = Field(default=None, alias="Indicator")
     scope: NullableStr = Field(default=None, alias="Scope")
     value: NullableNum = Field(default=None, alias="Value")
-    contextual_information: NullableStr = Field(
-        default=None, alias="Contextual Information"
-    )
+    contextual_information: NullableStr = Field(default=None, alias="Contextual Information")
 
 
 # ---------------------------------------------------------------------------
@@ -445,9 +431,7 @@ class AutomatedMeansRow(_Base):
     indicator: NullableStr = Field(default=None, alias="Indicator")
     scope: NullableStr = Field(default=None, alias="Scope")
     value: NullableNum = Field(default=None, alias="Value")
-    contextual_information: NullableStr = Field(
-        default=None, alias="Contextual Information"
-    )
+    contextual_information: NullableStr = Field(default=None, alias="Contextual Information")
 
 
 # ---------------------------------------------------------------------------

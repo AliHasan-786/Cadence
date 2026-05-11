@@ -14,7 +14,7 @@ import hashlib
 import json
 import sys
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
@@ -104,7 +104,7 @@ def _fetch_one(client: httpx.Client, report: Report) -> dict:
         "content_disposition": response.headers.get("content-disposition"),
         "content_length": len(body),
         "sha256": sha256,
-        "fetched_at_utc": datetime.now(timezone.utc).isoformat(),
+        "fetched_at_utc": datetime.now(UTC).isoformat(),
         "changed_since_last_fetch": changed,
     }
     meta_out.write_text(json.dumps(meta, indent=2, sort_keys=True))
@@ -114,9 +114,7 @@ def _fetch_one(client: httpx.Client, report: Report) -> dict:
 
 def fetch_period(period: str) -> list[dict]:
     if period not in REPORTS_BY_PERIOD:
-        raise ValueError(
-            f"Unknown period {period!r}. Known: {sorted(REPORTS_BY_PERIOD.keys())}"
-        )
+        raise ValueError(f"Unknown period {period!r}. Known: {sorted(REPORTS_BY_PERIOD.keys())}")
     metas = []
     with httpx.Client(
         follow_redirects=True,

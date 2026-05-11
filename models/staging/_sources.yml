@@ -101,3 +101,15 @@ sources:
         description: "Pre-cached LLM moderation verdicts (5 scenarios × 3 providers = 15 rows)."
         meta:
           external_location: "read_parquet('precache/synth/raw_llm_verdicts.parquet')"
+
+      - name: raw_researcher_keys
+        description: "Researcher API keys streamed in by the FastAPI service."
+        # No external_location: this table only exists on BigQuery (streaming
+        # inserts from production). dbt on DuckDB will see an empty view.
+        meta:
+          external_location: "read_csv_auto('precache/empty/researcher_keys.csv', sep=',', header=true)"
+
+      - name: raw_researcher_queries
+        description: "Researcher API audit log — every request, every response (hashed IP)."
+        meta:
+          external_location: "read_csv_auto('precache/empty/researcher_queries.csv', sep=',', header=true)"

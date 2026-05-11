@@ -30,7 +30,7 @@ import json
 import os
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -142,15 +142,10 @@ def gather_scenario_evidence(scenario_id: str) -> dict[str, Any]:
     keyfile = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
     if not keyfile or not Path(keyfile).expanduser().exists():
         raise RuntimeError(
-            "GOOGLE_APPLICATION_CREDENTIALS not set or missing; "
-            "set it before running pre-cache."
+            "GOOGLE_APPLICATION_CREDENTIALS not set or missing; set it before running pre-cache."
         )
-    creds = service_account.Credentials.from_service_account_file(
-        str(Path(keyfile).expanduser())
-    )
-    bq = bigquery.Client(
-        project="spry-smithy-489221-p4", credentials=creds, location="US"
-    )
+    creds = service_account.Credentials.from_service_account_file(str(Path(keyfile).expanduser()))
+    bq = bigquery.Client(project="spry-smithy-489221-p4", credentials=creds, location="US")
 
     # Pick the representative track: highest composite score in this scenario
     repr_q = f"""
@@ -218,9 +213,7 @@ def gather_scenario_evidence(scenario_id: str) -> dict[str, Any]:
         "rlc_hhi": float(sig.hhi_value) if sig and sig.hhi_value else 0.0,
         "ps_fires": repr_row.playlist_stuffing_fires,
         "ps_sev": float(repr_row.playlist_stuffing_severity or 0),
-        "ps_share": (
-            f"{sig.session_ai_share:.2f}" if sig and sig.session_ai_share else "n/a"
-        ),
+        "ps_share": (f"{sig.session_ai_share:.2f}" if sig and sig.session_ai_share else "n/a"),
         "composite_score": float(repr_row.composite_suspicion_score or 0),
         "heuristic_action": repr_row.recommended_action,
     }
@@ -238,7 +231,7 @@ def _verdict_id(prompt_hash: str, provider: str) -> str:
 def _new_skip(
     scenario_id: str, track_id: str, provider: str, prompt_hash: str, reason: str
 ) -> Verdict:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return Verdict(
         verdict_id=_verdict_id(prompt_hash, provider),
         scenario_id=scenario_id,
@@ -415,7 +408,7 @@ def make_verdict(
     caller = CALLERS[provider]
     last_err: str | None = None
     for attempt in range(MAX_RETRIES + 1):
-        t_req = datetime.now(timezone.utc)
+        t_req = datetime.now(UTC)
         try:
             result = caller(prompt, spec["model"])
         except Exception as e:  # API error
@@ -424,7 +417,7 @@ def make_verdict(
             if attempt < MAX_RETRIES:
                 time.sleep(2)
                 continue
-            t_done = datetime.now(timezone.utc)
+            t_done = datetime.now(UTC)
             return Verdict(
                 verdict_id=_verdict_id(prompt_hash, provider),
                 scenario_id=scenario_id,
@@ -448,7 +441,7 @@ def make_verdict(
             if attempt < MAX_RETRIES:
                 time.sleep(2)
                 continue
-            t_done = datetime.now(timezone.utc)
+            t_done = datetime.now(UTC)
             return Verdict(
                 verdict_id=_verdict_id(prompt_hash, provider),
                 scenario_id=scenario_id,
@@ -460,14 +453,16 @@ def make_verdict(
                 latency_ms=result.get("latency_ms", 0),
                 input_tokens=result.get("input_tokens", 0),
                 output_tokens=result.get("output_tokens", 0),
-                cost_usd=cost_of(provider, result.get("input_tokens", 0), result.get("output_tokens", 0)),
+                cost_usd=cost_of(
+                    provider, result.get("input_tokens", 0), result.get("output_tokens", 0)
+                ),
                 prompt_hash=prompt_hash,
                 response_hash=hashlib.sha256(result["text"].encode()).hexdigest(),
                 status="malformed_response",
                 error_class=last_err[:200],
             )
 
-        t_done = datetime.now(timezone.utc)
+        t_done = datetime.now(UTC)
         cost = cost_of(provider, result["input_tokens"], result["output_tokens"])
         try:
             return Verdict(
@@ -525,7 +520,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--force", action="store_true", help="Bypass cache, call every provider.")
     args = parser.parse_args(argv)
 
-    scenarios = ["bot_ring", "ai_fake_artists", "family_plan_abuse", "geographic_anomaly", "playlist_stuffing"]
+    scenarios = [
+        "bot_ring",
+        "ai_fake_artists",
+        "family_plan_abuse",
+        "geographic_anomaly",
+        "playlist_stuffing",
+    ]
 
     print(f"Budget cap: ${BUDGET_USD}")
     print(f"Providers configured: {list(PROVIDERS.keys())}")
@@ -541,14 +542,20 @@ def main(argv: list[str] | None = None) -> int:
         prompt = render_prompt(ev)
         prompt_hash = hashlib.sha256(prompt.encode()).hexdigest()
         all_prompts.append((scenario_id, prompt))
-        print(f"  representative track: {ev['track_id']}  prompt_hash={prompt_hash[:12]}...  "
-              f"prompt_len={len(prompt)} chars")
+        print(
+            f"  representative track: {ev['track_id']}  prompt_hash={prompt_hash[:12]}...  "
+            f"prompt_len={len(prompt)} chars"
+        )
 
         for provider in PROVIDERS:
-            cached = None if args.force else _load_cached_verdict(scenario_id, provider, prompt_hash)
+            cached = (
+                None if args.force else _load_cached_verdict(scenario_id, provider, prompt_hash)
+            )
             if cached and cached.status == "ok":
-                print(f"  [{provider:9s}] CACHED  rec={cached.recommendation}  "
-                      f"latency={cached.latency_ms}ms  cost=${cached.cost_usd:.4f}")
+                print(
+                    f"  [{provider:9s}] CACHED  rec={cached.recommendation}  "
+                    f"latency={cached.latency_ms}ms  cost=${cached.cost_usd:.4f}"
+                )
                 v = cached
             else:
                 v = make_verdict(
@@ -560,13 +567,15 @@ def main(argv: list[str] | None = None) -> int:
                     cumulative_cost=cumulative_cost,
                 )
                 if v.status == "ok":
-                    print(f"  [{provider:9s}] OK      rec={v.recommendation}  "
-                          f"conf={v.confidence:.2f}  latency={v.latency_ms}ms  cost=${v.cost_usd:.4f}")
+                    print(
+                        f"  [{provider:9s}] OK      rec={v.recommendation}  "
+                        f"conf={v.confidence:.2f}  latency={v.latency_ms}ms  cost=${v.cost_usd:.4f}"
+                    )
                 cumulative_cost += v.cost_usd
-                response_text = None
                 # Re-load the just-called response if we have it
-                _persist_transcript(scenario_id, provider, prompt, prompt_hash,
-                                    response_text=None, verdict=v)
+                _persist_transcript(
+                    scenario_id, provider, prompt, prompt_hash, response_text=None, verdict=v
+                )
 
             all_verdicts.append(v.model_dump(mode="json"))
 

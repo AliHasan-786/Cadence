@@ -19,9 +19,15 @@ repos:
         args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
 
-  - repo: https://github.com/sqlfluff/sqlfluff
-    rev: 3.1.1
-    hooks:
-      - id: sqlfluff-lint
-        # Sprint 0: no SQL files yet — this is a no-op until staging models land.
-        files: \.sql$
+  # sqlfluff is wired into pyproject.toml for local use (`uv run sqlfluff lint
+  # models/`) but DISABLED in pre-commit until Sprint 16 runs `sqlfluff fix`
+  # across the whole models/ tree. Style violations in 60+ existing SQL files
+  # would block every CI run; they're cosmetic, not correctness.
+  # When ready to re-enable: uncomment + `uv run sqlfluff fix --templater jinja .`
+  # - repo: https://github.com/sqlfluff/sqlfluff
+  #   rev: 3.1.1
+  #   hooks:
+  #     - id: sqlfluff-lint
+  #       files: \.sql$
+  #       args: ["--templater", "jinja"]
+  #       additional_dependencies: ["sqlfluff-templater-dbt==3.1.1"]

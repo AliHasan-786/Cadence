@@ -63,8 +63,7 @@ def _load_sheet(
 ) -> LoadResult:
     # Concatenate the 4 product Parquet files for this sheet
     parquet_paths = [
-        PARQUET_DIR / f"{prod}_{period}" / f"{sheet_slug}.parquet"
-        for prod in PRODUCTS
+        PARQUET_DIR / f"{prod}_{period}" / f"{sheet_slug}.parquet" for prod in PRODUCTS
     ]
     missing = [p for p in parquet_paths if not p.exists()]
     if missing:
@@ -174,7 +173,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  {len(results)} tables in {PROJECT_ID}.{DATASET_RAW}")
     print(f"  {total_rows} total rows")
     if not args.dry_run:
-        print(f"\n  Verify in BQ console:")
+        print("\n  Verify in BQ console:")
         print(
             f"  https://console.cloud.google.com/bigquery?project={PROJECT_ID}"
             f"&d={DATASET_RAW}&p={PROJECT_ID}&page=dataset"

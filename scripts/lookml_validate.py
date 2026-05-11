@@ -39,8 +39,10 @@ ONLY_IN_LOOKML: set[str] = {
 }
 ONLY_IN_METRICFLOW: set[str] = {
     # Helper metrics used inside derived metric expressions only.
-    "ok_verdict_count", "total_verdict_count",
-    "scenario_count", "two_of_three_agree_sum",
+    "ok_verdict_count",
+    "total_verdict_count",
+    "scenario_count",
+    "two_of_three_agree_sum",
 }
 
 
@@ -86,11 +88,15 @@ def main() -> int:
     print(f"\nParsing MetricFlow in {SEMANTIC_DIR}")
     mf_metrics, mf_measures = parse_metricflow()
     total_mf_measures = sum(len(s) for s in mf_measures.values())
-    print(f"  ✓ parsed {len(mf_metrics)} metrics across "
-          f"{len(mf_measures)} semantic models ({total_mf_measures} measures total)")
+    print(
+        f"  ✓ parsed {len(mf_metrics)} metrics across "
+        f"{len(mf_measures)} semantic models ({total_mf_measures} measures total)"
+    )
 
     print("\nMethodology contract — every MetricFlow METRIC has a LookML sibling")
-    print("(MetricFlow MEASURES are implementation detail; only `metrics:` entries are dashboard-facing)")
+    print(
+        "(MetricFlow MEASURES are implementation detail; only `metrics:` entries are dashboard-facing)"
+    )
 
     lkml_measure_names = set()
     for v in lkml_views.values():
@@ -100,23 +106,27 @@ def main() -> int:
     # YAML must appear as a LookML measure under the same name.
     missing_in_lookml = (mf_metrics - lkml_measure_names) - ONLY_IN_METRICFLOW
     extra_in_lookml = (
-        lkml_measure_names - mf_metrics - ONLY_IN_LOOKML
+        lkml_measure_names
+        - mf_metrics
+        - ONLY_IN_LOOKML
         - {m for s in mf_measures.values() for m in s}  # LookML can also expose MF measure names
     )
 
     errs = 0
     if missing_in_lookml:
-        print(f"  ✗ MetricFlow metrics missing from LookML:")
+        print("  ✗ MetricFlow metrics missing from LookML:")
         for name in sorted(missing_in_lookml):
             print(f"      - {name}")
         errs += len(missing_in_lookml)
     if extra_in_lookml:
-        print(f"  ⚠ LookML measures with no MetricFlow sibling (add to ONLY_IN_LOOKML if intentional):")
+        print(
+            "  ⚠ LookML measures with no MetricFlow sibling (add to ONLY_IN_LOOKML if intentional):"
+        )
         for name in sorted(extra_in_lookml):
             print(f"      - {name}")
         errs += len(extra_in_lookml)
 
-    print(f"\n  Coverage:")
+    print("\n  Coverage:")
     print(f"    MetricFlow metrics:        {len(mf_metrics):>3}")
     print(f"    LookML measures (total):   {len(lkml_measure_names):>3}")
     print(f"    Cross-source overlap:      {len(mf_metrics & lkml_measure_names):>3}")
@@ -124,7 +134,9 @@ def main() -> int:
     print(f"    ONLY_IN_LOOKML (allow-listed helpers):     {len(ONLY_IN_LOOKML)}")
 
     if errs:
-        print(f"\n  → {errs} parity issue(s). Edit either the LookML view or the semantic YAML to match.")
+        print(
+            f"\n  → {errs} parity issue(s). Edit either the LookML view or the semantic YAML to match."
+        )
         return 1
 
     print("\n✓ All checks passed.")

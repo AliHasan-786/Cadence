@@ -1,0 +1,44 @@
+version: 2
+
+models:
+
+  - name: dim_researcher_keys
+    description: |
+      Active researcher API keys. Streamed in by the FastAPI researcher service;
+      this dim rolls them up for fast lookups + auditing.
+    columns:
+      - name: key_id
+        tests:
+          - not_null
+          - unique
+      - name: created_at
+        tests: [not_null]
+
+  - name: fct_researcher_queries
+    description: |
+      One row per researcher-API call. Grain: query_id (UUID per request).
+      Streamed in from FastAPI middleware in real time.
+    columns:
+      - name: query_id
+        tests:
+          - not_null
+          - unique
+      - name: key_id
+        tests: [not_null]
+      - name: requested_at
+        tests: [not_null]
+      - name: outcome_class
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['success', 'rate_limited', 'client_error', 'server_error', 'other']
+
+  - name: rpt_researcher_query_audit
+    description: "Per-(researcher × day) API audit summary."
+    columns:
+      - name: key_id
+        tests: [not_null]
+      - name: query_date
+        tests: [not_null]
+      - name: n_queries
+        tests: [not_null]

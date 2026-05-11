@@ -34,8 +34,10 @@ def main(argv: list[str] | None = None) -> int:
     client = bigquery.Client(project=PROJECT_ID, credentials=creds, location=LOCATION)
 
     meta = pq.read_metadata(PARQUET)
-    print(f"Loading {meta.num_rows} verdicts ({PARQUET.stat().st_size / 1024:.1f} KB) → "
-          f"{PROJECT_ID}.{DATASET_RAW}.{TABLE}")
+    print(
+        f"Loading {meta.num_rows} verdicts ({PARQUET.stat().st_size / 1024:.1f} KB) → "
+        f"{PROJECT_ID}.{DATASET_RAW}.{TABLE}"
+    )
     if args.dry_run:
         return 0
 
@@ -46,8 +48,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     with PARQUET.open("rb") as fh:
         job = client.load_table_from_file(
-            fh, destination=f"{PROJECT_ID}.{DATASET_RAW}.{TABLE}",
-            job_config=job_config, location=LOCATION,
+            fh,
+            destination=f"{PROJECT_ID}.{DATASET_RAW}.{TABLE}",
+            job_config=job_config,
+            location=LOCATION,
         )
     job.result()
     print(f"  ✓ loaded {job.output_rows} rows")

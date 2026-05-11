@@ -27,11 +27,13 @@ def main() -> int:
         min_score = scenario["expected_score_min"]
         track_ids = scenario.get("track_ids") or []
         for tid in track_ids:
-            rows.append({
-                "scenario_id": sid,
-                "track_id": tid,
-                "expected_min_score": min_score,
-            })
+            rows.append(
+                {
+                    "scenario_id": sid,
+                    "track_id": tid,
+                    "expected_min_score": min_score,
+                }
+            )
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     with OUT.open("w") as f:
@@ -39,8 +41,10 @@ def main() -> int:
         w.writeheader()
         w.writerows(rows)
 
-    print(f"Wrote {len(rows)} expectation rows across "
-          f"{len(set(r['scenario_id'] for r in rows))} scenarios → {OUT}")
+    print(
+        f"Wrote {len(rows)} expectation rows across "
+        f"{len(set(r['scenario_id'] for r in rows))} scenarios → {OUT}"
+    )
     return 0
 
 

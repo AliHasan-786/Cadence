@@ -63,9 +63,7 @@ def _pa_type_for_field(class_name: str, field_name: str) -> pa.DataType:
 
 
 def _build_pa_schema(class_name: str, field_names: list[str]) -> pa.Schema:
-    return pa.schema(
-        [pa.field(name, _pa_type_for_field(class_name, name)) for name in field_names]
-    )
+    return pa.schema([pa.field(name, _pa_type_for_field(class_name, name)) for name in field_names])
 
 
 def _coerce_dataframe(df: pd.DataFrame, schema: pa.Schema) -> pd.DataFrame:
@@ -79,11 +77,10 @@ def _coerce_dataframe(df: pd.DataFrame, schema: pa.Schema) -> pd.DataFrame:
             out[field.name] = pd.to_numeric(col, errors="coerce")
         else:
             out[field.name] = col.apply(
-                lambda v: None
-                if v is None or (isinstance(v, float) and pd.isna(v))
-                else str(v)
+                lambda v: None if v is None or (isinstance(v, float) and pd.isna(v)) else str(v)
             )
     return out
+
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 RAW_DIR = REPO_ROOT / "precache" / "dsa_reports" / "raw"
@@ -119,7 +116,7 @@ def _parse_sheet(
     period: str,
     source_sha256: str,
 ) -> SheetResult:
-    slug, RowSchema, expected_headers = SHEET_REGISTRY[sheet_name]
+    slug, RowSchema, expected_headers = SHEET_REGISTRY[sheet_name]  # noqa: N806 RowSchema is a class reference
     ws = workbook[sheet_name]
     rows = list(ws.iter_rows(values_only=True))
     if not rows:

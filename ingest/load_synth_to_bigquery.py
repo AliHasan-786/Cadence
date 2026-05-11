@@ -103,11 +103,13 @@ def load_synth(dry_run: bool = False) -> list[dict]:
             )
         job.result()
         print(f"  ✓ loaded {job.output_rows:,} rows")
-        results.append({
-            "table_id": table_id,
-            "rows": job.output_rows,
-            "bytes_mb": size_mb,
-        })
+        results.append(
+            {
+                "table_id": table_id,
+                "rows": job.output_rows,
+                "bytes_mb": size_mb,
+            }
+        )
     return results
 
 

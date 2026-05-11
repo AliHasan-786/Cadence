@@ -1,0 +1,1 @@
+query_id,key_id,endpoint,query_params_json,response_size_bytes,response_status_code,latency_ms,requested_at,client_ip_hash

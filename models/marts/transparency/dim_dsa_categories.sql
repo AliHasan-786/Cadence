@@ -33,4 +33,3 @@ SELECT
         ELSE 'sub_category'
     END                  AS category_level
 FROM canonical
-
