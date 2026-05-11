@@ -23,10 +23,10 @@ import json
 import os
 import time
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
 
-from fastapi import Depends, FastAPI, Form, Header, HTTPException, Request, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from google.cloud import bigquery
 from google.oauth2 import service_account
@@ -139,7 +139,7 @@ def _bibtex_for(dbt_model: str, period: str) -> str:
 def make_citation(dbt_model: str, period: str = "annual_2025") -> Citation:
     return Citation(
         dbt_model=dbt_model,
-        data_refreshed_at=datetime.now(timezone.utc).isoformat(),
+        data_refreshed_at=datetime.now(UTC).isoformat(),
         suggested_bibtex=_bibtex_for(dbt_model, period),
     )
 
@@ -188,7 +188,7 @@ async def require_key(
         raise HTTPException(status.HTTP_403_FORBIDDEN, f"Key status: {row.status}")
 
     # Rate limit: count recent requests for this key
-    window_start = datetime.now(timezone.utc) - timedelta(minutes=RATE_LIMIT_WINDOW_MIN)
+    window_start = datetime.now(UTC) - timedelta(minutes=RATE_LIMIT_WINDOW_MIN)
     count_rows = list(
         bq.query(
             f"SELECT COUNT(*) AS n "
@@ -239,7 +239,7 @@ def audit_log(
             "response_size_bytes": response_size_bytes,
             "response_status_code": response_status_code,
             "latency_ms": latency_ms,
-            "requested_at": datetime.now(timezone.utc).isoformat(),
+            "requested_at": datetime.now(UTC).isoformat(),
             "client_ip_hash": key_ctx["client_ip_hash"],
         }
         bq.insert_rows_json(f"{PROJECT_ID}.{RAW_DATASET}.raw_researcher_queries", [row])
@@ -308,14 +308,14 @@ async def issue_key(body: KeyRequest):
                 "institution": body.institution,
                 "purpose": body.purpose,
                 "email_hash": email_hash,
-                "created_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
                 "status": "active",
             }
         ],
     )
     return KeyResponse(
         key_id=key_id,
-        issued_at=datetime.now(timezone.utc).isoformat(),
+        issued_at=datetime.now(UTC).isoformat(),
         rate_limit=f"{RATE_LIMIT_REQUESTS} requests / {RATE_LIMIT_WINDOW_MIN} min",
         note="V1 returns the key inline. Save it — there's no recovery flow. V1.1 will add email delivery.",
     )
@@ -343,8 +343,11 @@ async def dsa_cross_product(
     data = [dict(r.items()) for r in rows]
     payload = {"data": data, "citation": make_citation("rpt_cross_product_summary").model_dump()}
     audit_log(
-        key_ctx, "/dsa/cross_product", {"product_line": product_line},
-        len(json.dumps(payload, default=str)), 200,
+        key_ctx,
+        "/dsa/cross_product",
+        {"product_line": product_line},
+        len(json.dumps(payload, default=str)),
+        200,
     )
     return JSONResponse(content=json.loads(json.dumps(payload, default=str)))
 
@@ -357,8 +360,11 @@ async def dsa_time_series(
     key_ctx: dict = Depends(require_key),
 ):
     allowed = {
-        "total_decisions", "automated_decisions", "automated_share_pct",
-        "notices_received", "complaints_submitted",
+        "total_decisions",
+        "automated_decisions",
+        "automated_share_pct",
+        "notices_received",
+        "complaints_submitted",
     }
     if metric not in allowed:
         raise HTTPException(400, f"metric must be one of {sorted(allowed)}")
@@ -378,11 +384,17 @@ async def dsa_time_series(
         ).result()
     )
     data = [dict(r.items()) for r in rows]
-    payload = {"metric": metric, "data": data,
-               "citation": make_citation("rpt_quarter_over_quarter_trends").model_dump()}
+    payload = {
+        "metric": metric,
+        "data": data,
+        "citation": make_citation("rpt_quarter_over_quarter_trends").model_dump(),
+    }
     audit_log(
-        key_ctx, "/dsa/time_series", {"metric": metric, "product_line": product_line},
-        len(json.dumps(payload, default=str)), 200,
+        key_ctx,
+        "/dsa/time_series",
+        {"metric": metric, "product_line": product_line},
+        len(json.dumps(payload, default=str)),
+        200,
     )
     return JSONResponse(content=json.loads(json.dumps(payload, default=str)))
 
@@ -417,8 +429,11 @@ async def dsa_member_state(
         "citation": make_citation("rpt_member_state_breakdown").model_dump(),
     }
     audit_log(
-        key_ctx, "/dsa/member_state", {"product_line": product_line},
-        len(json.dumps(payload, default=str)), 200,
+        key_ctx,
+        "/dsa/member_state",
+        {"product_line": product_line},
+        len(json.dumps(payload, default=str)),
+        200,
     )
     return JSONResponse(content=json.loads(json.dumps(payload, default=str)))
 
@@ -436,8 +451,11 @@ async def dsa_categories(request: Request, key_ctx: dict = Depends(require_key))
     data = [dict(r.items()) for r in rows]
     payload = {"data": data, "citation": make_citation("dim_dsa_categories").model_dump()}
     audit_log(
-        key_ctx, "/dsa/categories", {},
-        len(json.dumps(payload, default=str)), 200,
+        key_ctx,
+        "/dsa/categories",
+        {},
+        len(json.dumps(payload, default=str)),
+        200,
     )
     return JSONResponse(content=json.loads(json.dumps(payload, default=str)))
 
@@ -459,10 +477,16 @@ async def schema(request: Request, key_ctx: dict = Depends(require_key)):
             {"name": f.name, "type": f.field_type, "mode": f.mode, "description": f.description}
             for f in tbl.schema
         ]
-    payload = {"tables": schemas, "citation": make_citation("rpt_cross_product_summary").model_dump()}
+    payload = {
+        "tables": schemas,
+        "citation": make_citation("rpt_cross_product_summary").model_dump(),
+    }
     audit_log(
-        key_ctx, "/schema", {},
-        len(json.dumps(payload, default=str)), 200,
+        key_ctx,
+        "/schema",
+        {},
+        len(json.dumps(payload, default=str)),
+        200,
     )
     return JSONResponse(content=json.loads(json.dumps(payload, default=str)))
 
@@ -501,16 +525,17 @@ async def get_citation(query_id: str, request: Request, key_ctx: dict = Depends(
         "citation": make_citation(endpoint_to_model.get(row.endpoint, "unknown")).model_dump(),
     }
     audit_log(
-        key_ctx, "/citations/{query_id}", {"query_id": query_id},
-        len(json.dumps(payload, default=str)), 200,
+        key_ctx,
+        "/citations/{query_id}",
+        {"query_id": query_id},
+        len(json.dumps(payload, default=str)),
+        200,
     )
     return JSONResponse(content=json.loads(json.dumps(payload, default=str)))
 
 
 @app.get("/audit/my_queries", tags=["audit"])
-async def audit_my_queries(
-    request: Request, limit: int = 50, key_ctx: dict = Depends(require_key)
-):
+async def audit_my_queries(request: Request, limit: int = 50, key_ctx: dict = Depends(require_key)):
     """Return the caller's own query history (BigQuery streaming insert visibility
     delay applies — recent calls may take up to ~90s to appear)."""
     if limit > 500:
@@ -538,8 +563,11 @@ async def audit_my_queries(
         "note": "Best-effort — BQ streaming insert visibility delay can be up to ~90s.",
     }
     audit_log(
-        key_ctx, "/audit/my_queries", {"limit": limit},
-        len(json.dumps(payload, default=str)), 200,
+        key_ctx,
+        "/audit/my_queries",
+        {"limit": limit},
+        len(json.dumps(payload, default=str)),
+        200,
     )
     return JSONResponse(content=json.loads(json.dumps(payload, default=str)))
 

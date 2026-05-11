@@ -60,6 +60,7 @@ ignore = ["E501"]
 
 [tool.ruff.lint.per-file-ignores]
 "ingest/schemas/*.py" = ["N815"]  # pydantic schemas mirror source column names verbatim
+"api/index.py" = ["B008"]         # FastAPI's `Depends(...)` in defaults is idiomatic
 
 [tool.mypy]
 python_version = "3.11"
