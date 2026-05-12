@@ -51,6 +51,12 @@ Thumbs.db
 # Claude Code local state
 .claude/
 
+# Next.js build output (kept under web/)
+web/node_modules/
+web/.next/
+web/.turbo/
+web/next-env.d.ts
+
 # Test / coverage
 .pytest_cache/
 .mypy_cache/
